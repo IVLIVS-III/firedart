@@ -12,20 +12,21 @@ import 'type_util.dart';
 abstract class Reference {
   final FirestoreGateway _gateway;
   final String path;
+  final List<int>? _transaction;
 
   String get id => path.substring(path.lastIndexOf('/') + 1);
 
   String get fullPath => '${_gateway.database}/$path';
 
-  Reference(this._gateway, String path)
+  Reference(this._gateway, String path, this._transaction)
       : path = _trimSlashes(path.startsWith(_gateway.database)
             ? path.substring(_gateway.database.length + 1)
             : path);
 
   factory Reference.create(FirestoreGateway gateway, String path) {
     return _trimSlashes(path).split('/').length % 2 == 0
-        ? DocumentReference(gateway, path)
-        : CollectionReference(gateway, path);
+        ? DocumentReference(gateway, path, null)
+        : CollectionReference(gateway, path, null);
   }
 
   @override
@@ -59,7 +60,8 @@ class CollectionReference extends Reference {
   /// Constructs a [CollectionReference] using [FirestoreGateway] and path.
   ///
   /// Throws [Exception] if path contains odd amount of '/'.
-  CollectionReference(this.gateway, String path) : super(gateway, path) {
+  CollectionReference(this.gateway, String path, [List<int>? transaction])
+      : super(gateway, path, transaction) {
     if (fullPath.split('/').length % 2 == 1) {
       throw Exception('Path is not a collection: $path');
     }
@@ -102,8 +104,10 @@ class CollectionReference extends Reference {
   /// to the specified number of documents.
   QueryReference limit(int count) => QueryReference(gateway, path).limit(count);
 
-  DocumentReference doc([String? id]) => DocumentReference(_gateway,
-      '$path/${id ?? DateTime.now().microsecondsSinceEpoch.toRadixString(16)}');
+  DocumentReference doc([String? id]) => DocumentReference(
+      _gateway,
+      '$path/${id ?? DateTime.now().microsecondsSinceEpoch.toRadixString(16)}',
+      _transaction);
 
   Future<Page<Document>> get(
           {int pageSize = 1024, String nextPageToken = ''}) =>
@@ -117,15 +121,16 @@ class CollectionReference extends Reference {
 }
 
 class DocumentReference extends Reference {
-  DocumentReference(FirestoreGateway gateway, String path)
-      : super(gateway, path) {
+  DocumentReference(
+      FirestoreGateway gateway, String path, List<int>? transaction)
+      : super(gateway, path, transaction) {
     if (fullPath.split('/').length % 2 == 0) {
       throw Exception('Path is not a document: $path');
     }
   }
 
   CollectionReference collection(String id) {
-    return CollectionReference(_gateway, '$path/$id');
+    return CollectionReference(_gateway, '$path/$id', _transaction);
   }
 
   Future<Document> get() => _gateway.getDocument(fullPath);
@@ -187,7 +192,7 @@ class Document {
   Map<String, dynamic> get map =>
       _rawDocument.fields.map((key, _) => MapEntry(key, this[key]));
 
-  DocumentReference get reference => DocumentReference(_gateway, path);
+  DocumentReference get reference => DocumentReference(_gateway, path, null);
 
   dynamic operator [](String key) {
     if (!_rawDocument.fields.containsKey(key)) return null;
@@ -253,7 +258,8 @@ class Page<T> extends ListBase<T> {
 class QueryReference extends Reference {
   final StructuredQuery _structuredQuery = StructuredQuery();
 
-  QueryReference(FirestoreGateway gateway, String path) : super(gateway, path) {
+  QueryReference(FirestoreGateway gateway, String path)
+      : super(gateway, path, null) {
     _structuredQuery.from
         .add(StructuredQuery_CollectionSelector()..collectionId = id);
   }
