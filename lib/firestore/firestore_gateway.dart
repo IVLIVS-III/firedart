@@ -165,7 +165,7 @@ class FirestoreGateway {
     await _client.updateDocument(request).catchError(_handleError);
   }
 
-  Future<void> deleteDocument(String path) => _client
+  Future<void> deleteDocument(String path) async => _client
       .deleteDocument(DeleteDocumentRequest()..name = path)
       .catchError(_handleError);
 
@@ -222,6 +222,25 @@ class FirestoreGateway {
     listenRequestStream.setListenRequest(request, _client, database);
 
     return _mapCollectionStream(listenRequestStream);
+  }
+
+  Future<List<int>> beginTransaction() async {
+    var document = fs.Document()..name = path;
+
+    var request = UpdateDocumentRequest()..document = document;
+
+    if (update) {
+      var mask = DocumentMask();
+      document.fields.keys.forEach((key) => mask.fieldPaths.add(key));
+      request.updateMask = mask;
+    }
+
+    var write = Write()..update = document;
+
+    var request = CommitRequest()
+      ..database = database
+      ..writes.add(write);
+    await _client.commit(request);
   }
 
   void _setupClient() {
