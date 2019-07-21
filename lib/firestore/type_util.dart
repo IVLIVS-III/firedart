@@ -70,7 +70,7 @@ abstract class TypeUtil {
       case fs.Value_ValueType.bytesValue:
         return value.bytesValue;
       case fs.Value_ValueType.referenceValue:
-        return DocumentReference(gateway, value.referenceValue);
+        return DocumentReference(gateway, value.referenceValue, null);
       case fs.Value_ValueType.geoPointValue:
         return GeoPoint.fromLatLng(value.geoPointValue);
       case fs.Value_ValueType.arrayValue:

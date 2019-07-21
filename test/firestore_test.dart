@@ -13,7 +13,7 @@ Future main() async {
 
   test('Create reference', () async {
     // Ensure document exists
-    var reference = firestore.document('test/reference');
+    var reference = firestore.doc('test/reference');
     await reference.set({'field': 'test'});
 
     var collectionReference = firestore.reference('test');
@@ -48,7 +48,7 @@ Future main() async {
   });
 
   test('Simple query', () async {
-    await firestore.document('test/query').set({'test_field': 'test_value'});
+    await firestore.doc('test/query').set({'test_field': 'test_value'});
     var query = await firestore
         .collection('test')
         .where('test_field', isEqualTo: 'test_value')
@@ -57,7 +57,7 @@ Future main() async {
   });
 
   test('Multiple query parameters', () async {
-    await firestore.document('test/query').set({'test_field': 42});
+    await firestore.doc('test/query').set({'test_field': 42});
     var query = await firestore
         .collection('test')
         .where('test_field', isEqualTo: 42, isGreaterThan: 41, isLessThan: 43)
@@ -76,7 +76,7 @@ Future main() async {
   });
 
   test('Add and delete named document', () async {
-    var reference = firestore.document('test/add_remove');
+    var reference = firestore.doc('test/add_remove');
     await reference.set({'field': 'test'});
     expect(await reference.exists, true);
     await reference.delete();
@@ -84,7 +84,7 @@ Future main() async {
   });
 
   test('Path with leading slash', () async {
-    var reference = firestore.document('/test/path');
+    var reference = firestore.doc('/test/path');
     await reference.set({'field': 'test'});
     expect(await reference.exists, true);
     await reference.delete();
@@ -92,7 +92,7 @@ Future main() async {
   });
 
   test('Path with trailing slash', () async {
-    var reference = firestore.document('test/path/');
+    var reference = firestore.doc('test/path/');
     await reference.set({'field': 'test'});
     expect(await reference.exists, true);
     await reference.delete();
@@ -100,7 +100,7 @@ Future main() async {
   });
 
   test('Path with leading and trailing slashes', () async {
-    var reference = firestore.document('/test/path/');
+    var reference = firestore.doc('/test/path/');
     await reference.set({'field': 'test'});
     expect(await reference.exists, true);
     await reference.delete();
@@ -185,6 +185,56 @@ Future main() async {
     expect(doc['coordinates'], geoPoint);
     expect(doc['list'], [1, 'text']);
     expect(doc['map'], {'int': 1, 'string': 'text'});
+  });
+
+  test('Transaction set', () async {
+    var reference = firestore.doc('test/transaction_set');
+    await reference.set({'value': 0, 'value2': 0});
+
+    await firestore.runTransaction((transactionId) async {
+      var document = await reference.get();
+      await reference.set({'value': document.map['value'] + 1});
+    });
+
+    var documenta = await reference.get();
+    expect(documenta['value'], 1);
+    await reference.delete();
+  });
+
+  test('Concurrent modification', () async {
+    await firestore.doc('test/concurrent').set({'value': 0});
+
+    var futures = <Future>[];
+    for (var i = 0; i < 5; i++) {
+      var transaction = await firestore.transaction()
+        ..beginTransaction();
+      var reference = transaction.doc('test/concurrent');
+      futures.add(reference.get().then((document) async {
+        await reference.update({'value': document.map['value'] + 1});
+        await transaction.commit();
+      }));
+    }
+
+    for (var future in futures) {
+      await future;
+    }
+
+    var document = await firestore.doc('test/concurrent').get();
+    expect(document['value'], 5);
+    await firestore.doc('test/concurrent').delete();
+  });
+
+  test('Rollback on failed transaction', () async {
+    var reference = firestore.doc('test/rollback');
+    await reference.set({'value': 0});
+
+    // Fail
+    await reference.update({'value': 2});
+    await reference.create({'value': 3});
+
+    var document = await reference.get();
+    expect(document['value'], 0);
+    await reference.delete();
   });
 
   test('Refresh token when expired', () async {
