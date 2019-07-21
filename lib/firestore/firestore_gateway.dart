@@ -243,6 +243,26 @@ class FirestoreGateway {
     await _client.commit(request);
   }
 
+  Future<List<int>> beginTransaction() async {
+//    var document = fs.Document()
+//    ..name = path;
+//
+//    var request = UpdateDocumentRequest()..document = document;
+//
+//    if (update) {
+//      var mask = DocumentMask();
+//      document.fields.keys.forEach((key) => mask.fieldPaths.add(key));
+//      request.updateMask = mask;
+//    }
+//
+//    var write = Write()..update = document;
+//
+//    var request = CommitRequest()
+//      ..database = database
+//      ..writes.add(write);
+//    await _client.commit(request);
+  }
+
   void _setupClient() {
     _listenRequestStreamMap.clear();
     _client = FirestoreClient(ClientChannel('firestore.googleapis.com'),
