@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:firebase_auth_rest/firebase_auth_rest.dart';
 import 'package:firedart/generated/google/firestore/v1/common.pb.dart';
 import 'package:firedart/generated/google/firestore/v1/document.pb.dart' as fs;
 import 'package:firedart/generated/google/firestore/v1/firestore.pbgrpc.dart';
@@ -9,6 +8,7 @@ import 'package:grpc/grpc.dart';
 
 import '../firedart.dart';
 import 'models.dart';
+import 'token_authenticator.dart';
 
 class _FirestoreGatewayStreamCache {
   void Function(String userInfo)? onDone;
@@ -226,7 +226,8 @@ class FirestoreGateway {
 
   void _setupClient() {
     _listenRequestStreamMap.clear();
-    _client = FirestoreClient(ClientChannel('firestore.googleapis.com'));
+    _client = FirestoreClient(ClientChannel('firestore.googleapis.com'),
+        options: TokenAuthenticator.from(auth)?.toCallOptions);
   }
 
   void _handleError(e) {

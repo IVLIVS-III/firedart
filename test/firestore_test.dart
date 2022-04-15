@@ -1,18 +1,15 @@
 import 'dart:convert';
 
-import 'package:firebase_auth_rest/firebase_auth_rest.dart';
 import 'package:firedart/firedart.dart';
-import 'package:http/http.dart';
 import 'package:test/test.dart';
 
 import 'test_config.dart';
 
 Future main() async {
-  var client = Client();
-
-  var auth = FirebaseAuth(client, apiKey);
+  var tokenStore = VolatileStore();
+  var auth = FirebaseAuth(apiKey, tokenStore);
   var firestore = Firestore(projectId, auth: auth);
-  await auth.signInWithPassword(email, password);
+  await auth.signIn(email, password);
 
   test('Create reference', () async {
     // Ensure document exists
@@ -188,5 +185,20 @@ Future main() async {
     expect(doc['coordinates'], geoPoint);
     expect(doc['list'], [1, 'text']);
     expect(doc['map'], {'int': 1, 'string': 'text'});
+  });
+
+  test('Refresh token when expired', () async {
+    tokenStore.expireToken();
+    var map = await firestore.collection('test').get();
+    expect(auth.isSignedIn, true);
+    expect(map, isNot(null));
+  });
+
+  test('Sign out on bad refresh token', () async {
+    tokenStore.setToken('user_id', 'bad_token', 'bad_token', 0);
+    try {
+      await firestore.collection('test').get();
+    } catch (_) {}
+    expect(auth.isSignedIn, false);
   });
 }
