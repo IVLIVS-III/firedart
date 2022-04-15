@@ -201,6 +201,29 @@ class FirestoreGateway {
         .toList();
   }
 
+  Stream<List<Document>> streamQuery(
+      StructuredQuery structuredQuery, String fullPath) {
+    if (_listenRequestStreamMap.containsKey(fullPath)) {
+      return _mapCollectionStream(_listenRequestStreamMap[fullPath]!);
+    }
+
+    final queryTarget = Target_QueryTarget()
+      ..parent = fullPath.substring(0, fullPath.lastIndexOf('/'))
+      ..structuredQuery = structuredQuery;
+    final target = Target()..query = queryTarget;
+    final request = ListenRequest()
+      ..database = database
+      ..addTarget = target;
+
+    final listenRequestStream = _FirestoreGatewayStreamCache(
+        onDone: _handleDone, userInfo: fullPath, onError: _handleError);
+    _listenRequestStreamMap[fullPath] = listenRequestStream;
+
+    listenRequestStream.setListenRequest(request, _client, database);
+
+    return _mapCollectionStream(listenRequestStream);
+  }
+
   void _setupClient() {
     _listenRequestStreamMap.clear();
     _client = FirestoreClient(ClientChannel('firestore.googleapis.com'),

@@ -23,7 +23,7 @@ Future main() async {
   print(user);
 
   // Instantiate a reference to a document - this happens offline
-  var ref = Firestore.instance.collection('test').document('doc');
+  var ref = Firestore.instance.collection('test').doc('doc');
 
   // Subscribe to changes to that document
   ref.stream.listen((document) => print('updated: $document'));

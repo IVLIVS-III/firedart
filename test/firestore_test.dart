@@ -69,7 +69,7 @@ Future main() async {
     var reference = firestore.collection('test');
     var docReference = await reference.add({'field': 'test'});
     expect(docReference['field'], 'test');
-    var document = reference.document(docReference.id);
+    var document = reference.doc(docReference.id);
     expect(await document.exists, true);
     await document.delete();
     expect(await document.exists, false);
@@ -108,7 +108,7 @@ Future main() async {
   });
 
   test('Read data from document', () async {
-    var reference = firestore.collection('test').document('read_data');
+    var reference = firestore.collection('test').doc('read_data');
     await reference.set({'field': 'test'});
     var map = await reference.get();
     expect(map['field'], 'test');
@@ -116,7 +116,7 @@ Future main() async {
   });
 
   test('Overwrite document', () async {
-    var reference = firestore.collection('test').document('overwrite');
+    var reference = firestore.collection('test').doc('overwrite');
     await reference.set({'field1': 'test1', 'field2': 'test1'});
     await reference.set({'field1': 'test2'});
     var doc = await reference.get();
@@ -126,7 +126,7 @@ Future main() async {
   });
 
   test('Update document', () async {
-    var reference = firestore.collection('test').document('update');
+    var reference = firestore.collection('test').doc('update');
     await reference.set({'field1': 'test1', 'field2': 'test1'});
     await reference.update({'field1': 'test2'});
     var doc = await reference.get();
@@ -157,7 +157,7 @@ Future main() async {
   });
 
   test('Document field types', () async {
-    var reference = firestore.collection('test').document('types');
+    var reference = firestore.collection('test').doc('types');
     var dateTime = DateTime.now();
     var geoPoint = GeoPoint(38.7223, 9.1393);
     await reference.set({

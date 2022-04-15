@@ -102,8 +102,8 @@ class CollectionReference extends Reference {
   /// to the specified number of documents.
   QueryReference limit(int count) => QueryReference(gateway, path).limit(count);
 
-  DocumentReference document(String id) =>
-      DocumentReference(_gateway, '$path/$id');
+  DocumentReference doc([String? id]) => DocumentReference(_gateway,
+      '$path/${id ?? DateTime.now().microsecondsSinceEpoch.toRadixString(16)}');
 
   Future<Page<Document>> get(
           {int pageSize = 1024, String nextPageToken = ''}) =>
@@ -174,6 +174,8 @@ class Document {
   Document(this._gateway, this._rawDocument);
 
   String get id => path.substring(path.lastIndexOf('/') + 1);
+
+  bool get exists => true;
 
   String get path =>
       _rawDocument.name.substring(_rawDocument.name.indexOf('/documents') + 10);
@@ -334,6 +336,9 @@ class QueryReference extends Reference {
   }
 
   Future<List<Document>> get() => _gateway.runQuery(_structuredQuery, fullPath);
+
+  Stream<List<Document>> get stream =>
+      _gateway.streamQuery(_structuredQuery, fullPath);
 
   void _addFilter(String fieldPath, dynamic value,
       {StructuredQuery_FieldFilter_Operator? operator}) {
