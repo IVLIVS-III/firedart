@@ -12,14 +12,14 @@ class Firestore {
   static Client? client;
   static FirebaseAccount? firebaseAccount;
 
-  static Firestore initialize(String api, String projectId,
+  static Firestore initialize(String apiKey, String projectId,
       {String? databaseId}) {
     if (_instance != null) {
       throw Exception('Firestore instance was already initialized');
     }
     try {
       client = Client();
-      _firebaseAuth = FirebaseAuth(client!, api);
+      _firebaseAuth = FirebaseAuth(client!, apiKey);
     } catch (e) {
       // FirebaseAuth isn't initialized
     }
