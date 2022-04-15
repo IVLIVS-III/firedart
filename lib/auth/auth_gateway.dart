@@ -1,14 +1,16 @@
 import 'dart:convert';
 
-import 'package:firebase_auth_rest/firebase_auth_rest.dart';
 import 'package:firedart/auth/client.dart';
+import 'package:firedart/auth/token_provider.dart';
 
+import 'exceptions.dart';
 import 'user_gateway.dart';
 
 class AuthGateway {
   final KeyClient client;
+  final TokenProvider tokenProvider;
 
-  AuthGateway(this.client);
+  AuthGateway(this.client, this.tokenProvider);
 
   Future<User> signUp(String email, String password) async =>
       _auth('signUp', {'email': email, 'password': password});
@@ -30,6 +32,7 @@ class AuthGateway {
     };
 
     var map = await _post(method, body);
+    tokenProvider.setToken(map);
     return User.fromMap(map);
   }
 
@@ -44,8 +47,7 @@ class AuthGateway {
     );
 
     if (response.statusCode != 200) {
-      var errorData = ErrorData(message: response.body);
-      throw AuthException(errorData);
+      throw AuthException(response.body);
     }
 
     return json.decode(response.body);

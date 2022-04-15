@@ -1,11 +1,13 @@
 import 'dart:convert';
 
 import 'package:firedart/auth/client.dart';
+import 'package:firedart/auth/token_provider.dart';
 
 class UserGateway {
   final UserClient _client;
 
-  UserGateway(KeyClient client) : _client = UserClient(client);
+  UserGateway(KeyClient client, TokenProvider tokenProvider)
+      : _client = UserClient(client, tokenProvider);
 
   Future<void> requestEmailVerification() =>
       _post('sendOobCode', {'requestType': 'VERIFY_EMAIL'});
