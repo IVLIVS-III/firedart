@@ -7,7 +7,6 @@ import 'package:firedart/generated/google/firestore/v1/query.pb.dart';
 import 'package:grpc/grpc.dart';
 
 import '../firedart.dart';
-import 'models.dart';
 import 'token_authenticator.dart';
 
 class _FirestoreGatewayStreamCache {
@@ -80,9 +79,10 @@ class FirestoreGateway {
 
   late FirestoreClient _client;
 
+  FirestoreClient get client => _client;
+
   FirestoreGateway(String projectId, {String? databaseId, this.auth})
-      : database =
-            'projects/$projectId/databases/${databaseId ?? '(default)'}/documents',
+      : database = 'projects/$projectId/databases/${databaseId ?? '(default)'}',
         _listenRequestStreamMap = <String, _FirestoreGatewayStreamCache>{} {
     _setupClient();
   }
@@ -143,24 +143,32 @@ class FirestoreGateway {
     return Document(this, response);
   }
 
-  Future<Document> getDocument(path) async {
-    var rawDocument = await _client
-        .getDocument(GetDocumentRequest()..name = path)
-        .catchError(_handleError);
+  Future<Document> getDocument(path, [List<int>? transactionId]) async {
+    final request = GetDocumentRequest()..name = path;
+    if (transactionId != null) {
+      request.transaction = transactionId;
+    }
+    var rawDocument =
+        await _client.getDocument(request).catchError(_handleError);
     return Document(this, rawDocument);
   }
 
-  Future<void> updateDocument(
-      String path, fs.Document document, bool update) async {
+  Future<void> setDocument(
+      DocumentReference documentReference, Map<String, dynamic> data,
+      [SetOptions? options]) async {
+    var writeBatch = WriteBatch(this);
+    writeBatch.set(documentReference, data, options);
+    await writeBatch.commit();
+  }
+
+  Future<void> updateDocument(String path, fs.Document document) async {
     document.name = path;
 
     var request = UpdateDocumentRequest()..document = document;
 
-    if (update) {
-      var mask = DocumentMask();
-      document.fields.keys.forEach((key) => mask.fieldPaths.add(key));
-      request.updateMask = mask;
-    }
+    var mask = DocumentMask();
+    document.fields.keys.forEach((key) => mask.fieldPaths.add(key));
+    request.updateMask = mask;
 
     await _client.updateDocument(request).catchError(_handleError);
   }
@@ -224,31 +232,14 @@ class FirestoreGateway {
     return _mapCollectionStream(listenRequestStream);
   }
 
-  Future<List<int>> beginTransaction() async {
-    // TODO: implement
-    return <int>[];
-    /*
-    var document = fs.Document()..name = path;
-
-    var request = UpdateDocumentRequest()..document = document;
-
-    if (update) {
-      var mask = DocumentMask();
-      document.fields.keys.forEach((key) => mask.fieldPaths.add(key));
-      request.updateMask = mask;
-    }
-
-    var write = Write()..update = document;
-
-    var request = CommitRequest()
-      ..database = database
-      ..writes.add(write);
-    await _client.commit(request);
-    */
+  Future<Transaction> beginTransaction() async {
+    final transaction = Transaction(this);
+    await transaction.begin();
+    return transaction;
   }
 
-  Future<void> commitTransaction(List<int> transactionId) async {
-    // TODO: implement
+  Future<void> commitTransaction(Transaction transaction) async {
+    await transaction.commit();
   }
 
   void _setupClient() {
@@ -288,6 +279,18 @@ class FirestoreGateway {
       if (response.hasDocumentChange()) {
         listenRequestStream.documentMap[response.documentChange.document.name] =
             Document(this, response.documentChange.document);
+      } else if (response.hasDocumentDelete()) {
+        listenRequestStream.documentMap
+            .remove(response.documentDelete.document);
+        listenRequestStream.documentMap[response.documentDelete.document] =
+            Document(this,
+                fs.Document()..name = response.documentDelete.document, false);
+      } else if (response.hasDocumentRemove()) {
+        listenRequestStream.documentMap
+            .remove(response.documentDelete.document);
+        listenRequestStream.documentMap[response.documentRemove.document] =
+            Document(this,
+                fs.Document()..name = response.documentRemove.document, false);
       } else {
         listenRequestStream.documentMap
             .remove(response.documentDelete.document);

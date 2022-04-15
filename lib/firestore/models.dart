@@ -1,13 +1,23 @@
 import 'dart:collection';
 
+import 'package:firedart/generated/google/firestore/v1/common.pb.dart';
 import 'package:firedart/generated/google/firestore/v1/document.pb.dart' as fs;
+import 'package:firedart/generated/google/firestore/v1/document.pb.dart';
+import 'package:firedart/generated/google/firestore/v1/firestore.pb.dart';
 import 'package:firedart/generated/google/firestore/v1/query.pb.dart';
+import 'package:firedart/generated/google/firestore/v1/write.pb.dart';
 import 'package:firedart/generated/google/protobuf/wrappers.pb.dart';
 import 'package:firedart/generated/google/type/latlng.pb.dart';
 import 'package:grpc/grpc.dart';
 
 import 'firestore_gateway.dart';
 import 'type_util.dart';
+
+part 'extended/exponential_backoff.dart';
+part 'extended/field_value.dart';
+part 'extended/set_options.dart';
+part 'extended/transaction.dart';
+part 'extended/write_batch.dart';
 
 abstract class Reference {
   final FirestoreGateway _gateway;
@@ -16,7 +26,7 @@ abstract class Reference {
 
   String get id => path.substring(path.lastIndexOf('/') + 1);
 
-  String get fullPath => '${_gateway.database}/$path';
+  String get fullPath => '${_gateway.database}/documents/$path';
 
   Reference(this._gateway, String path, this._transaction)
       : path = _trimSlashes(path.startsWith(_gateway.database)
@@ -160,13 +170,13 @@ class DocumentReference extends Reference {
 
   /// Create or update a document.
   /// In the case of an update, any fields not referenced in the payload will be deleted.
-  Future<void> set(Map<String, dynamic> map) async =>
-      _gateway.updateDocument(fullPath, _encodeMap(map), false);
+  Future<void> set(Map<String, dynamic> map, [SetOptions? options]) async =>
+      _gateway.setDocument(this, map, options);
 
   /// Create or update a document.
   /// In case of an update, fields not referenced in the payload will remain unchanged.
   Future<void> update(Map<String, dynamic> map) =>
-      _gateway.updateDocument(fullPath, _encodeMap(map), true);
+      _gateway.updateDocument(fullPath, _encodeMap(map));
 
   /// Deletes a document.
   Future<void> delete() async => await _gateway.deleteDocument(fullPath);
@@ -175,12 +185,12 @@ class DocumentReference extends Reference {
 class Document {
   final FirestoreGateway _gateway;
   final fs.Document _rawDocument;
+  final bool exists;
 
-  Document(this._gateway, this._rawDocument);
+  Document(this._gateway, this._rawDocument, [bool? exists])
+      : exists = exists ?? true;
 
   String get id => path.substring(path.lastIndexOf('/') + 1);
-
-  bool get exists => true;
 
   String get path =>
       _rawDocument.name.substring(_rawDocument.name.indexOf('/documents') + 10);

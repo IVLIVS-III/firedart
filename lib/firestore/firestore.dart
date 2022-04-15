@@ -44,13 +44,13 @@ class Firestore {
 
   DocumentReference doc(String path) => DocumentReference(_gateway, path, null);
 
-  // TODO: implement
-  dynamic transaction() => null;
+  Transaction transaction() => Transaction(_gateway);
 
-  Future<void> runTransaction(
-      Future<void> Function(List<int> transactionId) func) async {
-    var transactionId = await _gateway.beginTransaction();
-    await func(transactionId);
-    await _gateway.commitTransaction(transactionId);
+  Future<T> runTransaction<T>(
+      Future<T> Function(Transaction transaction) func) async {
+    var transaction = await _gateway.beginTransaction();
+    final result = await func(transaction);
+    await _gateway.commitTransaction(transaction);
+    return result;
   }
 }

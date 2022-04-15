@@ -206,9 +206,9 @@ Future main() async {
 
     var futures = <Future>[];
     for (var i = 0; i < 5; i++) {
-      var transaction = await firestore.transaction()
-        ..beginTransaction();
-      var reference = transaction.doc('test/concurrent');
+      var transaction = firestore.transaction();
+      await transaction.begin();
+      var reference = firestore.doc('test/concurrent');
       futures.add(reference.get().then((document) async {
         await reference.update({'value': document.map['value'] + 1});
         await transaction.commit();
