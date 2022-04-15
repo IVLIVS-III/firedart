@@ -225,6 +225,7 @@ class FirestoreGateway {
   }
 
   Future<List<int>> beginTransaction() async {
+    // TODO: implement
     var document = fs.Document()..name = path;
 
     var request = UpdateDocumentRequest()..document = document;
@@ -241,6 +242,10 @@ class FirestoreGateway {
       ..database = database
       ..writes.add(write);
     await _client.commit(request);
+  }
+
+  Future<void> commitTransaction(List<int> transactionId) async {
+    // TODO: implement
   }
 
   void _setupClient() {
